@@ -12,3 +12,85 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  githubId  String   @unique
+  name      String?
+  avatarUrl String?
+  bio       String?
+  personalAccessToken String?
+}
+
+model PullRequests {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     String
+  pr_url       String
+  state     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  llm_judge_response JSON
+}
+
+model Issues {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     String
+  issue_url       String
+  state     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  llm_judge_response JSON
+}
+
+model Commits {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     String
+  commit_url       String
+  state     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  llm_judge_response JSON
+}
+
+model reviews {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     String
+  pr_url    String
+  state     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  llm_judge_response JSON
+}
+
+model repositories {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     String
+  repo_url    String
+  state     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  llm_judge_response JSON
+}
+
+model organization {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     String
+  org_url    String
+  state     String
+  users      User[]
+  llm_judge_response JSON
+}
