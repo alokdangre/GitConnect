@@ -17,7 +17,6 @@ enum ItemState {
   OPEN
   CLOSED
   MERGED
-  REVERTED
 }
 
 enum ReviewState {
@@ -28,38 +27,41 @@ enum ReviewState {
 }
 
 model User {
-  id                   String    @id @default(uuid())
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  githubId             String    @unique
-  login                String?   // github login/username
+  id                   String       @id @default(uuid())
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  githubId             String       @unique
+  login                String?
   name                 String?
   avatarUrl            String?
   bio                  String?
-  email                String?   // optional (may require scope)
+  email                String?
   profileUrl           String?
   followersCount       Int?
   followingCount       Int?
-  personalAccessToken  String?   // ENCRYPT or store reference to secrets manager
+  personalAccessToken  String?
   tokenUpdatedAt       DateTime?
   tokenExpiresAt       DateTime?
-  lastSyncedAt         DateTime? // when we last synced their GH data
-  source               String?   // e.g. "github"
-  repositories         Repository[] 
-  pullRequests         PullRequest[]
-  issues               Issue[]
-  commits              Commit[]
-  reviews              Review[]
+  lastSyncedAt         DateTime?
+  source               String?
+
+  // relations
+  repositories         Repository[]       // owner of repositories
+  pullRequests         PullRequest[]      // authored PRs
+  issues               Issue[]            // authored Issues
+  commits              Commit[]           // authored Commits
+  reviews              Review[]           // authored Reviews
+  organizations        Organization[]     // implicit many-to-many with Organization
 
   @@index([githubId])
 }
 
 model Repository {
-  id              String    @id @default(uuid())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  githubId        Int       @unique        // GitHub repo id (numeric)
-  fullName        String    // owner/name
+  id              String       @id @default(uuid())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  githubId        Int          @unique
+  fullName        String
   name            String
   ownerLogin      String
   private         Boolean
@@ -72,35 +74,40 @@ model Repository {
   size            Int?
   defaultBranch   String?
   license         String?
-  topics          String[]  // tags/topics
+  topics          String[] 
   lastPushedAt    DateTime?
   state           String?
-  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // relations
+  user            User?        @relation(fields: [userId], references: [id])
   userId          String?
   pullRequests    PullRequest[]
   issues          Issue[]
   commits         Commit[]
   reviews         Review[]
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  organizationId  String?
+
   llm_judge_response Json?
-  rawData         Json?     // full GitHub repo payload for reprocessing
+  rawData           Json?
 
   @@index([fullName])
   @@index([ownerLogin])
 }
 
 model PullRequest {
-  id               String    @id @default(uuid())
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  githubNumber     Int       // PR number in the repo
+  id               String     @id @default(uuid())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  githubNumber     Int
   title            String
   body             String?
   htmlUrl          String
   state            ItemState
-  authorLogin      String?   // author username (quick read)
-  authorId         String?   // link to User if available
-  author           User?     @relation(fields: [authorId], references: [id] , onDelete: Cascade)
-  repository       Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  authorLogin      String?
+  authorId         String?
+  author           User?      @relation(fields: [authorId], references: [id])
+  repository       Repository @relation(fields: [repositoryId], references: [id])
   repositoryId     String
   mergedAt         DateTime?
   closedAt         DateTime?
@@ -109,21 +116,26 @@ model PullRequest {
   changedFiles     Int?
   commentsCount    Int?
   reviewCount      Int?
+
+  // reverse relation for reviews on this PR
+  reviews          Review[]
+
   llm_judge_response Json?
-  llm_score        Float?    // structured summary field
-  llm_verdict      String?   // e.g., "good", "needs_work"
-  rawData          Json?     // store full GH payload to re-evaluate
+  llm_score        Float?
+  llm_verdict      String?
+  llm_summary      String?
+  rawData          Json?
   syncedAt         DateTime?
 
-  @@unique([repositoryId, githubNumber]) // prevents duplicate PRs for same repo
+  @@unique([repositoryId, githubNumber])
   @@index([authorId])
   @@index([repositoryId])
 }
 
 model Issue {
-  id               String    @id @default(uuid())
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id               String     @id @default(uuid())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
   githubNumber     Int
   title            String
   body             String?
@@ -131,13 +143,14 @@ model Issue {
   state            ItemState
   authorLogin      String?
   authorId         String?
-  author           User?     @relation(fields: [authorId], references: [id] , onDelete: Cascade)
-  repository       Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  author           User?      @relation(fields: [authorId], references: [id])
+  repository       Repository @relation(fields: [repositoryId], references: [id])
   repositoryId     String
   closedAt         DateTime?
   commentsCount    Int?
-  labels           String[]  // simple approach, or normalize to Label model
-  assignees        String[]  // logins for quick reference
+  labels           String[]
+  assignees        String[]
+
   llm_judge_response Json?
   llm_score        Float?
   llm_verdict      String?
@@ -150,22 +163,25 @@ model Issue {
 }
 
 model Commit {
-  id               String    @id @default(uuid())
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  sha              String    // commit SHA (unique)
+  id               String     @id @default(uuid())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  sha              String
   message          String
   htmlUrl          String
   authorName       String?
   authorEmail      String?
   authoredDate     DateTime?
   committedDate    DateTime?
-  repository       Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  repository       Repository @relation(fields: [repositoryId], references: [id])
   repositoryId     String
+  authorId         String?    // link to User if available
+  author           User?      @relation(fields: [authorId], references: [id])
   additions        Int?
   deletions        Int?
   filesChanged     Int?
   commentsCount    Int?
+
   llm_judge_response Json?
   llm_score        Float?
   llm_verdict      String?
@@ -178,39 +194,50 @@ model Commit {
 }
 
 model Review {
-  id               String    @id @default(uuid())
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  githubId         Int       // GitHub review id
-  pullRequest      PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
-  pullRequestId    String
+  id               String     @id @default(uuid())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  githubId         Int        @unique
   reviewerLogin    String?
+  reviewerId       String?
+  reviewer         User?      @relation(fields: [reviewerId], references: [id])
   state            ReviewState
   body             String?
   submittedAt      DateTime?
+
+  // relation to PR (required)
+  pullRequest      PullRequest @relation(fields: [pullRequestId], references: [id])
+  pullRequestId    String
+
+  // relation to repository (so Repository.reviews has an opposite)
+  repository       Repository  @relation(fields: [repositoryId], references: [id])
+  repositoryId     String
+
   llm_judge_response Json?
   llm_score        Float?
   llm_verdict      String?
   rawData          Json?
 
   @@index([pullRequestId])
-  @@unique([githubId])
 }
 
 model Organization {
-  id               String    @id @default(uuid())
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  githubId         Int?      @unique
+  id               String     @id @default(uuid())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  githubId         Int?       @unique
   login            String
   name             String?
   description      String?
   htmlUrl          String?
   membersCount     Int?
+
+  // relations
   repositories     Repository[]
-  users            User[]    // members (link via join table if you want many-to-many)
+  users            User[]        // implicit many-to-many with User
+
   llm_judge_response Json?
-  rawData          Json?
+  rawData           Json?
 
   @@index([login])
 }
