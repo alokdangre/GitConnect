@@ -59,31 +59,31 @@ export default function PullsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <header className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/10 p-4 shadow-lg backdrop-blur md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-100">Pull Requests</h2>
-          <p className="text-sm text-slate-400">
+          <h2 className="text-2xl font-semibold text-white">Pull Requests</h2>
+          <p className="text-sm text-slate-200/70">
             Review pull requests via backend /github/repos/:owner/:repo/pulls
           </p>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 text-sm">
+        <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 text-sm text-slate-100/80">
           <input
             value={owner}
             onChange={(event) => setOwner(event.target.value)}
             placeholder="Owner"
-            className="w-40 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+            className="w-40 rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100 placeholder:text-slate-400"
           />
           <span className="text-slate-500">/</span>
           <input
             value={repo}
             onChange={(event) => setRepo(event.target.value)}
             placeholder="Repository"
-            className="w-48 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+            className="w-48 rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100 placeholder:text-slate-400"
           />
           <select
             value={stateFilter}
             onChange={(event) => setStateFilter(event.target.value as typeof stateFilter)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+            className="rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100"
           >
             {STATE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -93,14 +93,14 @@ export default function PullsPage() {
           </select>
           <button
             type="submit"
-            className="rounded-md border border-purple-500 px-3 py-2 text-xs font-semibold text-purple-200 transition-colors hover:bg-purple-500/10"
+            className="rounded-md border border-purple-400/60 px-3 py-2 text-xs font-semibold text-purple-100 transition-colors hover:border-purple-300 hover:text-purple-50"
           >
             Load pull requests
           </button>
           <button
             type="button"
             onClick={() => submitted && refetch()}
-            className="rounded-md border border-slate-700 px-3 py-2 text-xs font-medium text-slate-200 transition-colors hover:border-purple-500 hover:text-purple-200"
+            className="rounded-md border border-white/20 px-3 py-2 text-xs font-medium text-slate-100 transition-colors hover:border-purple-300 hover:text-purple-50"
           >
             Refresh
           </button>
@@ -132,18 +132,18 @@ function PullRequestCard({ pr }: { pr: GitHubPullRequest }) {
   const merged = Boolean(pr.merged_at);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow">
+    <div className="rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <a
             href={pr.html_url}
-            className="text-lg font-semibold text-purple-300 hover:text-purple-200"
+            className="text-lg font-semibold text-purple-200 hover:text-purple-100"
             target="_blank"
             rel="noreferrer"
           >
             #{pr.number} — {pr.title}
           </a>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-200/70">
             <span className="flex items-center gap-1">
               {merged ? <GitMerge className="h-3 w-3" /> : <GitPullRequest className="h-3 w-3" />}
               {merged ? 'Merged' : pr.state.toUpperCase()}
@@ -159,7 +159,7 @@ function PullRequestCard({ pr }: { pr: GitHubPullRequest }) {
                 href={pr.user.html_url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1 text-purple-300 hover:text-purple-200"
+                className="flex items-center gap-1 text-purple-200 hover:text-purple-100"
               >
                 <User className="h-3 w-3" />
                 @{pr.user.login}
@@ -174,16 +174,16 @@ function PullRequestCard({ pr }: { pr: GitHubPullRequest }) {
 
 function PlaceholderState() {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-400">
-      Enter a <strong className="text-slate-200">owner/repo</strong> and choose a state to load pull requests.
+    <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-slate-200/80 backdrop-blur">
+      Enter a <strong className="text-white">owner/repo</strong> and choose a state to load pull requests.
     </div>
   );
 }
 
 function LoadingState() {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">
-      <Loader2 className="h-4 w-4 animate-spin text-purple-300" />
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100/80 backdrop-blur">
+      <Loader2 className="h-4 w-4 animate-spin text-purple-200" />
       Loading pull requests…
     </div>
   );
@@ -191,7 +191,7 @@ function LoadingState() {
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+    <div className="rounded-xl border border-red-500/40 bg-red-500/20 px-4 py-3 text-sm text-red-100">
       Failed to load pull requests: {message}
     </div>
   );
@@ -199,8 +199,8 @@ function ErrorState({ message }: { message: string }) {
 
 function EmptyState({ owner, repo, state }: { owner: string; repo: string; state: string }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-400">
-      No {state} pull requests found for <span className="font-semibold text-slate-200">{owner}/{repo}</span>.
+    <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-slate-200/80 backdrop-blur">
+      No {state} pull requests found for <span className="font-semibold text-white">{owner}/{repo}</span>.
     </div>
   );
 }

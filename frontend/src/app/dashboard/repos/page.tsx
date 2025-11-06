@@ -42,16 +42,16 @@ export default function ReposPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 shadow-lg backdrop-blur">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-100">Repositories</h2>
-          <p className="text-sm text-slate-400">Fetched from GitHub via backend /github/me/repos</p>
+          <h2 className="text-2xl font-semibold text-white">Repositories</h2>
+          <p className="text-sm text-slate-200/70">Fetched from GitHub via backend /github/me/repos</p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-3 text-sm text-slate-100/80">
           <select
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value as typeof typeFilter)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
+            className="rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100"
           >
             {FILTER_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -61,7 +61,7 @@ export default function ReposPage() {
           </select>
           <button
             onClick={refetch}
-            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-xs font-medium text-slate-200 transition-colors hover:border-purple-500 hover:text-purple-200"
+            className="flex items-center gap-2 rounded-md border border-purple-400/60 px-3 py-2 text-xs font-medium text-purple-100 transition-colors hover:border-purple-300 hover:text-purple-50"
           >
             Refresh
           </button>
@@ -87,25 +87,25 @@ export default function ReposPage() {
 
 function RepoCard({ repo }: { repo: GitHubRepo }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow">
+    <div className="rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur">
       <div className="flex items-start justify-between">
         <div>
           <a
             href={repo.html_url}
             target="_blank"
             rel="noreferrer"
-            className="text-lg font-semibold text-purple-300 hover:text-purple-200"
+            className="text-lg font-semibold text-purple-200 hover:text-purple-100"
           >
             {repo.name}
           </a>
-          <p className="text-xs text-slate-500">{repo.full_name}</p>
+          <p className="text-xs text-slate-200/60">{repo.full_name}</p>
         </div>
-        <span className="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-300">
+        <span className="rounded-full border border-white/20 px-2 py-1 text-xs text-slate-100/80">
           {repo.private ? 'Private' : 'Public'}
         </span>
       </div>
-      {repo.description && <p className="mt-3 text-sm text-slate-300">{repo.description}</p>}
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-400">
+      {repo.description && <p className="mt-3 text-sm text-slate-100/80">{repo.description}</p>}
+      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-200/70">
         <div className="flex items-center gap-1">
           <Star className="h-3 w-3" />
           <span>{repo.stargazers_count}</span>
@@ -128,8 +128,8 @@ function RepoCard({ repo }: { repo: GitHubRepo }) {
 
 function LoadingState() {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">
-      <Loader2 className="h-4 w-4 animate-spin text-purple-300" />
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100/80 backdrop-blur">
+      <Loader2 className="h-4 w-4 animate-spin text-purple-200" />
       Loading repositories…
     </div>
   );
@@ -137,7 +137,7 @@ function LoadingState() {
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+    <div className="rounded-xl border border-red-500/40 bg-red-500/20 px-4 py-3 text-sm text-red-100">
       Failed to load repositories: {message}
     </div>
   );
@@ -145,7 +145,7 @@ function ErrorState({ message }: { message: string }) {
 
 function EmptyState() {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6 text-center text-sm text-slate-400">
+    <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-sm text-slate-200/70 backdrop-blur">
       No repositories found for your GitHub user.
     </div>
   );
