@@ -7,7 +7,7 @@ export interface CacheOptions {
   ttlMs?: number;
 }
 
-const DEFAULT_TTL_MS = 60_000; // 1 minute
+const DEFAULT_TTL_MS = 60_000;
 
 class InMemoryCache {
   private store = new Map<string, CacheValue<unknown>>();
