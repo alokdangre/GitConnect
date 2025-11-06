@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
 
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
@@ -133,8 +134,25 @@ authRouter.post('/github/callback', async (req, res) => {
 
     const { personalAccessToken: _personalAccessToken, ...sanitizedUser } = userRecord;
 
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      res.status(500).json({ error: 'JWT secret is not configured on the server' });
+      return;
+    }
+
+    const appToken = jwt.sign(
+      {
+        userId: userRecord.id,
+      },
+      jwtSecret,
+      {
+        expiresIn: '7d',
+      }
+    );
+
     res.json({
       accessToken,
+      appToken,
       user: sanitizedUser,
     });
   } catch (error) {

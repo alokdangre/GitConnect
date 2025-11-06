@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Github, Loader2 } from 'lucide-react';
+import { storeAuthSession } from '@/lib/authStorage';
 
 interface AuthResponse {
   accessToken: string;
+  appToken: string;
   user: {
     id: string;
     githubId: string;
@@ -61,15 +63,17 @@ export default function AuthCallback() {
 
         const data: AuthResponse = await response.json();
 
-        // Store auth data in localStorage
-        localStorage.setItem('github_access_token', data.accessToken);
-        localStorage.setItem('github_user', JSON.stringify(data.user));
+        storeAuthSession({
+          appToken: data.appToken,
+          githubToken: data.accessToken,
+          user: data.user,
+        });
 
         setStatus('success');
 
         // Redirect to dashboard or home after a brief delay
         setTimeout(() => {
-          router.push('/');
+          router.push('/dashboard/profile');
         }, 2000);
 
       } catch (err) {
