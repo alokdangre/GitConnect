@@ -1,3 +1,5 @@
+'use client';
+
 import { Github } from 'lucide-react';
 
 export default function Home() {
