@@ -44,18 +44,23 @@ authRouter.post('/github/callback', async (req, res) => {
   }
 
   try {
+    const tokenParams = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+    });
+
+    if (redirectUri) {
+      tokenParams.set('redirect_uri', redirectUri);
+    }
+
     const tokenResponse = await fetch(GITHUB_TOKEN_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         Accept: 'application/json',
       },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-        redirect_uri: redirectUri,
-      }),
+      body: tokenParams.toString(),
     });
 
     if (!tokenResponse.ok) {
