@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { buildBackendUrl } from '@/lib/backend';
 import { getAppToken } from '@/lib/authStorage';
 
-type Primitive = string | number | boolean | null | undefined;
+type Primitive = string | number | boolean | undefined;
 
-export interface UseGitHubFetchOptions<Q extends Record<string, Primitive> | undefined = undefined> {
+export interface UseGitHubFetchOptions {
   path: string;
-  query?: Q;
+  query?: Record<string, Primitive>;
   skip?: boolean;
 }
 
