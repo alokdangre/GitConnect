@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRouter from './routes/auth.js';
 import githubRouter from './routes/github.js';
+import judgmentRouter from './routes/judgment.js';
 
 dotenv.config();
 
@@ -12,6 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/auth', authRouter);
 app.use('/github', githubRouter);
+app.use('/judgment', judgmentRouter);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
