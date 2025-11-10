@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, GitBranch, Loader2, MessageSquare, Tag } from 'lucide-react';
+import { GitBranch, Loader2, MessageSquare, Tag } from 'lucide-react';
 import { useGitHubFetch } from '@/hooks/useGitHubFetch';
 
 interface GitHubIssue {
@@ -16,72 +16,139 @@ interface GitHubIssue {
     login?: string;
     html_url?: string;
   };
+  repository?: {
+    full_name?: string;
+    html_url?: string;
+  };
   created_at: string;
   updated_at: string;
 }
 
-const STATE_OPTIONS: Array<{ label: string; value: 'open' | 'closed' | 'all' }> = [
+type IssueFilterOption = 'assigned' | 'created' | 'mentioned' | 'subscribed' | 'all';
+type IssueStateOption = 'open' | 'closed' | 'all';
+type IssueSortOption = 'created' | 'updated' | 'comments';
+type IssueDirectionOption = 'asc' | 'desc';
+
+interface IssueFilters {
+  filter: IssueFilterOption;
+  state: IssueStateOption;
+  labels: string;
+  sort: IssueSortOption;
+  direction: IssueDirectionOption;
+}
+
+const PER_PAGE = 20;
+
+const FILTER_OPTIONS: Array<{ label: string; value: IssueFilterOption }> = [
+  { label: 'Assigned to me', value: 'assigned' },
+  { label: 'Created by me', value: 'created' },
+  { label: 'Mentioning me', value: 'mentioned' },
+  { label: 'Watching', value: 'subscribed' },
+  { label: 'All issues', value: 'all' },
+];
+
+const STATE_OPTIONS: Array<{ label: string; value: IssueStateOption }> = [
   { label: 'Open', value: 'open' },
   { label: 'Closed', value: 'closed' },
   { label: 'All', value: 'all' },
 ];
 
+const SORT_OPTIONS: Array<{ label: string; value: IssueSortOption }> = [
+  { label: 'Recently updated', value: 'updated' },
+  { label: 'Recently created', value: 'created' },
+  { label: 'Most comments', value: 'comments' },
+];
+
+const DIRECTION_OPTIONS: Array<{ label: string; value: IssueDirectionOption }> = [
+  { label: 'Descending', value: 'desc' },
+  { label: 'Ascending', value: 'asc' },
+];
+
 export default function IssuesPage() {
-  const [owner, setOwner] = useState('');
-  const [repo, setRepo] = useState('');
-  const [stateFilter, setStateFilter] = useState<'open' | 'closed' | 'all'>('open');
-  const [submitted, setSubmitted] = useState<{ owner: string; repo: string; state: string } | null>(null);
+  const [filters, setFilters] = useState<IssueFilters>({
+    filter: 'assigned',
+    state: 'open',
+    labels: '',
+    sort: 'updated',
+    direction: 'desc',
+  });
+  const [page, setPage] = useState(1);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!owner || !repo) return;
-    setSubmitted({ owner, repo, state: stateFilter });
-  };
-
-  const requestPath = useMemo(() => {
-    if (!submitted) return null;
-    return `/github/repos/${submitted.owner}/${submitted.repo}/issues`;
-  }, [submitted]);
+  const query = useMemo(() => {
+    return {
+      per_page: PER_PAGE,
+      page,
+      filter: filters.filter,
+      state: filters.state,
+      labels: filters.labels.trim() || undefined,
+      sort: filters.sort,
+      direction: filters.direction,
+    };
+  }, [filters, page]);
 
   const { data, loading, error, refetch } = useGitHubFetch<GitHubIssue[]>({
-    path: requestPath ?? '',
-    skip: !requestPath,
-    query: submitted
-      ? {
-          per_page: 20,
-          state: submitted.state,
-        }
-      : undefined,
+    path: '/github/me/issues',
+    query,
   });
 
-  const issues = useMemo(() => data ?? [], [data]);
+  const issues = data ?? [];
+  const hasNextPage = issues.length === PER_PAGE;
+  const hasPreviousPage = page > 1;
+
+  const handleFilterChange = <K extends keyof IssueFilters>(key: K, value: IssueFilters[K]) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
+
+  const handleLabelsChange = (value: string) => {
+    setFilters((prev) => ({ ...prev, labels: value }));
+    setPage(1);
+  };
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  const handleNextPage = () => {
+    if (hasNextPage) {
+      setPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (hasPreviousPage) {
+      setPage((prev) => prev - 1);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/10 p-4 shadow-lg backdrop-blur md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-white">Issues</h2>
+          <h2 className="text-2xl font-semibold text-white">Your GitHub Issues</h2>
           <p className="text-sm text-slate-200/70">
-            Explore issues via backend /github/repos/:owner/:repo/issues
+            Backed by the <code className="rounded bg-black/30 px-1.5 py-0.5 text-xs text-purple-200">/github/me/issues</code>{' '}
+            endpoint using your GitHub App installation.
           </p>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 text-sm text-slate-100/80">
-          <input
-            value={owner}
-            onChange={(event) => setOwner(event.target.value)}
-            placeholder="Owner"
-            className="w-40 rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100 placeholder:text-slate-400"
-          />
-          <span className="text-slate-500">/</span>
-          <input
-            value={repo}
-            onChange={(event) => setRepo(event.target.value)}
-            placeholder="Repository"
-            className="w-48 rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100 placeholder:text-slate-400"
-          />
+        <form
+          onSubmit={(event) => event.preventDefault()}
+          className="flex flex-wrap items-center gap-3 text-sm text-slate-100/80"
+        >
           <select
-            value={stateFilter}
-            onChange={(event) => setStateFilter(event.target.value as typeof stateFilter)}
+            value={filters.filter}
+            onChange={(event) => handleFilterChange('filter', event.target.value as IssueFilterOption)}
+            className="rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100"
+          >
+            {FILTER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.state}
+            onChange={(event) => handleFilterChange('state', event.target.value as IssueStateOption)}
             className="rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100"
           >
             {STATE_OPTIONS.map((option) => (
@@ -90,37 +157,113 @@ export default function IssuesPage() {
               </option>
             ))}
           </select>
-          <button
-            type="submit"
-            className="rounded-md border border-purple-400/60 px-3 py-2 text-xs font-semibold text-purple-100 transition-colors hover:border-purple-300 hover:text-purple-50"
+          <input
+            value={filters.labels}
+            onChange={(event) => handleLabelsChange(event.target.value)}
+            placeholder="Labels (comma separated)"
+            className="w-52 rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100 placeholder:text-slate-400"
+          />
+          <select
+            value={filters.sort}
+            onChange={(event) => handleFilterChange('sort', event.target.value as IssueSortOption)}
+            className="rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100"
           >
-            Load issues
-          </button>
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.direction}
+            onChange={(event) => handleFilterChange('direction', event.target.value as IssueDirectionOption)}
+            className="rounded-md border border-white/20 bg-black/20 px-3 py-2 text-slate-100"
+          >
+            {DIRECTION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
-            onClick={() => submitted && refetch()}
-            className="rounded-md border border-white/20 px-3 py-2 text-xs font-medium text-slate-100 transition-colors hover:border-purple-300 hover:text-purple-50"
+            onClick={handleRefresh}
+            className="rounded-md border border-purple-400/60 px-3 py-2 text-xs font-semibold text-purple-100 transition-colors hover:border-purple-300 hover:text-purple-50"
           >
             Refresh
           </button>
         </form>
       </header>
 
-      {!submitted ? (
-        <PlaceholderState />
-      ) : loading ? (
-        <LoadingState />
-      ) : error ? (
-        <ErrorState message={error.message} />
-      ) : issues.length === 0 ? (
-        <EmptyState owner={submitted.owner} repo={submitted.repo} state={submitted.state} />
-      ) : (
-        <div className="space-y-4">
-          {issues.map((issue) => (
-            <IssueCard key={issue.id} issue={issue} />
-          ))}
-        </div>
-      )}
+      <section className="space-y-4">
+        <PaginationControls
+          page={page}
+          onNext={handleNextPage}
+          onPrevious={handlePreviousPage}
+          hasNext={hasNextPage}
+          hasPrevious={hasPreviousPage}
+        />
+
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error.message} />
+        ) : issues.length === 0 ? (
+          <EmptyState filter={filters.filter} state={filters.state} labels={filters.labels} />
+        ) : (
+          <div className="space-y-4">
+            {issues.map((issue) => (
+              <IssueCard key={issue.id} issue={issue} />
+            ))}
+          </div>
+        )}
+
+        <PaginationControls
+          page={page}
+          onNext={handleNextPage}
+          onPrevious={handlePreviousPage}
+          hasNext={hasNextPage}
+          hasPrevious={hasPreviousPage}
+        />
+      </section>
+    </div>
+  );
+}
+
+function PaginationControls({
+  page,
+  hasNext,
+  hasPrevious,
+  onNext,
+  onPrevious,
+}: {
+  page: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-200/80 backdrop-blur">
+      <span>Page {page}</span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onPrevious}
+          disabled={!hasPrevious}
+          className="rounded-md border border-white/20 px-3 py-1 font-medium transition-colors disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-500 hover:border-purple-300 hover:text-purple-50"
+        >
+          Previous
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={!hasNext}
+          className="rounded-md border border-white/20 px-3 py-1 font-medium transition-colors disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-500 hover:border-purple-300 hover:text-purple-50"
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 }
@@ -132,7 +275,7 @@ function IssueCard({ issue }: { issue: GitHubIssue }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-        <div>
+        <div className="space-y-2">
           <a
             href={issue.html_url}
             className="text-lg font-semibold text-purple-200 hover:text-purple-100"
@@ -141,7 +284,7 @@ function IssueCard({ issue }: { issue: GitHubIssue }) {
           >
             #{issue.number} — {issue.title}
           </a>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-200/70">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-200/70">
             <span className="flex items-center gap-1">
               <GitBranch className="h-3 w-3" />
               {issue.state.toUpperCase()}
@@ -164,6 +307,16 @@ function IssueCard({ issue }: { issue: GitHubIssue }) {
             )}
           </div>
         </div>
+        {issue.repository?.full_name && (
+          <a
+            href={issue.repository.html_url ?? '#'}
+            className="text-xs font-medium text-purple-200 hover:text-purple-100"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {issue.repository.full_name}
+          </a>
+        )}
       </div>
       {issue.labels && issue.labels.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-100">
@@ -178,14 +331,6 @@ function IssueCard({ issue }: { issue: GitHubIssue }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function PlaceholderState() {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-slate-200/80 backdrop-blur">
-      Enter a <strong className="text-white">owner/repo</strong> and choose a state to load issues.
     </div>
   );
 }
@@ -207,10 +352,27 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
-function EmptyState({ owner, repo, state }: { owner: string; repo: string; state: string }) {
+function EmptyState({
+  filter,
+  state,
+  labels,
+}: {
+  filter: IssueFilterOption;
+  state: IssueStateOption;
+  labels: string;
+}) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-slate-200/80 backdrop-blur">
-      No {state} issues found for <span className="font-semibold text-white">{owner}/{repo}</span>.
+      <p className="font-medium text-white">No issues matched your filters.</p>
+      <p className="mt-2 text-xs text-slate-400">
+        Filter: <span className="font-semibold">{filter}</span> · State: <span className="font-semibold">{state}</span>
+        {labels.trim() ? (
+          <>
+            {' '}
+            · Labels: <span className="font-semibold">{labels}</span>
+          </>
+        ) : null}
+      </p>
     </div>
   );
 }
