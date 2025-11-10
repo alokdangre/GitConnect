@@ -40,8 +40,12 @@ model User {
   followersCount       Int?
   followingCount       Int?
   personalAccessToken  String?
+  githubRefreshToken   String?
   tokenUpdatedAt       DateTime?
   tokenExpiresAt       DateTime?
+  refreshTokenExpiresAt DateTime?
+  githubTokenScope     String?
+  githubTokenType      String?
   lastSyncedAt         DateTime?
   source               String?
 
