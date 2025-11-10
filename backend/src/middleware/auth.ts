@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import type { User } from '@prisma/client';
+import type { Prisma, User } from '@prisma/client';
 import prisma from '../lib/prisma.js';
+import { refreshUserTokens, GitHubOAuthError } from '../lib/githubAppAuth.js';
 
 interface AppJwtPayload {
   userId: string;
@@ -10,9 +11,20 @@ interface AppJwtPayload {
   [key: string]: unknown;
 }
 
+interface TokenFieldShape {
+  personalAccessToken?: string | null;
+  githubRefreshToken?: string | null;
+  tokenExpiresAt?: Date | null;
+  refreshTokenExpiresAt?: Date | null;
+  githubTokenScope?: string | null;
+  githubTokenType?: string | null;
+}
+
+type UserWithTokens = User & TokenFieldShape;
+
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: User;
+    user?: UserWithTokens;
     githubToken?: string;
   }
 }
@@ -50,6 +62,21 @@ function extractBearerToken(headerValue?: string | null): string | null {
 function decryptPersonalAccessToken(encryptedToken: string): string | null {
   // TODO: Replace this stub with real decryption using KMS or AES-256-GCM.
   return encryptedToken || null;
+}
+
+function tokenNeedsRefresh(expiresAt: Date | null, bufferMs = 60_000): boolean {
+  if (!expiresAt) return false;
+  const threshold = expiresAt.getTime() - bufferMs;
+  return Date.now() >= threshold;
+}
+
+function resolveGitHubOAuthCredentials(): { clientId: string; clientSecret: string } | null {
+  const clientId = process.env.GITHUB_APP_CLIENT_ID ?? process.env.GITHUB_CLIENT_ID;
+  const clientSecret = process.env.GITHUB_APP_CLIENT_SECRET ?? process.env.GITHUB_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+  return { clientId, clientSecret };
 }
 
 function ensureJwtSecret(): string | null {
@@ -108,7 +135,7 @@ export async function authenticateRequest(req: Request, res: Response, next: Nex
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    const user = (await prisma.user.findUnique({ where: { id: payload.userId } })) as UserWithTokens | null;
 
     if (!user) {
       respond(res, 401, {
@@ -132,7 +159,7 @@ export async function authenticateRequest(req: Request, res: Response, next: Nex
       return;
     }
 
-    const githubToken = decryptPersonalAccessToken(user.personalAccessToken);
+    let githubToken = decryptPersonalAccessToken(user.personalAccessToken);
 
     if (!githubToken) {
       respond(res, 403, {
@@ -143,6 +170,77 @@ export async function authenticateRequest(req: Request, res: Response, next: Nex
         },
       });
       return;
+    }
+
+    if (tokenNeedsRefresh(user.tokenExpiresAt ?? null)) {
+      if (!user.githubRefreshToken) {
+        respond(res, 401, {
+          success: false,
+          error: {
+            code: 'GITHUB_TOKEN_EXPIRED',
+            message: 'Stored GitHub token is expired and cannot be refreshed',
+          },
+        });
+        return;
+      }
+
+      const credentials = resolveGitHubOAuthCredentials();
+      if (!credentials) {
+        res.status(500).json(SEND_GENERIC_ERROR);
+        return;
+      }
+
+      try {
+        const refreshed = await refreshUserTokens({
+          refreshToken: user.githubRefreshToken,
+          clientId: credentials.clientId,
+          clientSecret: credentials.clientSecret,
+        });
+
+        githubToken = refreshed.accessToken;
+
+        const tokenUpdate: Prisma.UserUpdateInput & TokenFieldShape = {
+          personalAccessToken: refreshed.accessToken,
+          tokenUpdatedAt: new Date(),
+          tokenExpiresAt: refreshed.tokenExpiresAt ?? undefined,
+          refreshTokenExpiresAt: refreshed.refreshTokenExpiresAt ?? undefined,
+          githubTokenScope: refreshed.scope ?? undefined,
+          githubTokenType: refreshed.tokenType ?? undefined,
+          githubRefreshToken: refreshed.refreshToken ?? null,
+        };
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: tokenUpdate,
+        });
+
+        user.personalAccessToken = refreshed.accessToken;
+        user.githubRefreshToken = refreshed.refreshToken ?? null;
+        user.tokenUpdatedAt = tokenUpdate.tokenUpdatedAt ?? new Date();
+        user.tokenExpiresAt = refreshed.tokenExpiresAt ?? null;
+      } catch (error) {
+        if (error instanceof GitHubOAuthError) {
+          respond(res, 401, {
+            success: false,
+            error: {
+              code: 'GITHUB_TOKEN_REFRESH_FAILED',
+              message: error.message,
+              details: error.details,
+            },
+          });
+          return;
+        }
+
+        respond(res, 500, {
+          success: false,
+          error: {
+            code: 'GITHUB_TOKEN_REFRESH_FAILED',
+            message: 'Failed to refresh GitHub token',
+            details: error instanceof Error ? error.message : undefined,
+          },
+        });
+        return;
+      }
     }
 
     req.user = user;
