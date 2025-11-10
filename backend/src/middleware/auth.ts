@@ -197,27 +197,32 @@ export async function authenticateRequest(req: Request, res: Response, next: Nex
           clientSecret: credentials.clientSecret,
         });
 
-        githubToken = refreshed.accessToken;
+        const now = new Date();
 
-        const tokenUpdate: Prisma.UserUpdateInput & TokenFieldShape = {
+        const updateData: Record<string, unknown> = {
           personalAccessToken: refreshed.accessToken,
-          tokenUpdatedAt: new Date(),
-          tokenExpiresAt: refreshed.tokenExpiresAt ?? undefined,
-          refreshTokenExpiresAt: refreshed.refreshTokenExpiresAt ?? undefined,
-          githubTokenScope: refreshed.scope ?? undefined,
-          githubTokenType: refreshed.tokenType ?? undefined,
           githubRefreshToken: refreshed.refreshToken ?? null,
+          tokenUpdatedAt: now,
+          tokenExpiresAt: refreshed.tokenExpiresAt ?? null,
+          refreshTokenExpiresAt: refreshed.refreshTokenExpiresAt ?? null,
+          githubTokenScope: refreshed.scope ?? null,
+          githubTokenType: refreshed.tokenType ?? null,
         };
 
         await prisma.user.update({
           where: { id: user.id },
-          data: tokenUpdate,
+          data: updateData as Prisma.UserUpdateInput,
         });
+
+        githubToken = refreshed.accessToken;
 
         user.personalAccessToken = refreshed.accessToken;
         user.githubRefreshToken = refreshed.refreshToken ?? null;
-        user.tokenUpdatedAt = tokenUpdate.tokenUpdatedAt ?? new Date();
+        user.tokenUpdatedAt = now;
         user.tokenExpiresAt = refreshed.tokenExpiresAt ?? null;
+        user.refreshTokenExpiresAt = refreshed.refreshTokenExpiresAt ?? null;
+        user.githubTokenScope = refreshed.scope ?? null;
+        user.githubTokenType = refreshed.tokenType ?? null;
       } catch (error) {
         if (error instanceof GitHubOAuthError) {
           respond(res, 401, {
