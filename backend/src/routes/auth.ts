@@ -33,8 +33,8 @@ function buildProfileCreateData(githubId: string, profile: GitHubUserResponse): 
   } satisfies Prisma.UserCreateInput;
 }
 
-function buildTokenUpdateData(tokens: GitHubAppTokenPayload, now: Date): Prisma.UserUpdateInput {
-  const data = {
+function buildTokenUpdateData(tokens: GitHubAppTokenPayload, now: Date): Record<string, unknown> {
+  return {
     personalAccessToken: tokens.accessToken,
     tokenUpdatedAt: now,
     tokenExpiresAt: tokens.tokenExpiresAt ?? null,
@@ -43,12 +43,10 @@ function buildTokenUpdateData(tokens: GitHubAppTokenPayload, now: Date): Prisma.
     githubTokenType: tokens.tokenType ?? null,
     githubRefreshToken: tokens.refreshToken ?? null,
   } satisfies Record<string, unknown>;
-
-  return data as unknown as Prisma.UserUpdateInput;
 }
 
-function buildTokenCreateData(tokens: GitHubAppTokenPayload, now: Date): Prisma.UserCreateInput {
-  const data = {
+function buildTokenCreateData(tokens: GitHubAppTokenPayload, now: Date): Record<string, unknown> {
+  return {
     personalAccessToken: tokens.accessToken,
     tokenUpdatedAt: now,
     tokenExpiresAt: tokens.tokenExpiresAt ?? null,
@@ -57,8 +55,6 @@ function buildTokenCreateData(tokens: GitHubAppTokenPayload, now: Date): Prisma.
     githubTokenType: tokens.tokenType ?? null,
     githubRefreshToken: tokens.refreshToken ?? null,
   } satisfies Record<string, unknown>;
-
-  return data as unknown as Prisma.UserCreateInput;
 }
 
 async function upsertGitHubUserRecord(githubId: string, profile: GitHubUserResponse, tokens: GitHubAppTokenPayload) {
@@ -73,11 +69,11 @@ async function upsertGitHubUserRecord(githubId: string, profile: GitHubUserRespo
     update: {
       ...profileUpdate,
       ...tokenUpdate,
-    },
+    } as Prisma.UserUpdateInput,
     create: {
       ...profileCreate,
       ...tokenCreate,
-    },
+    } as Prisma.UserCreateInput,
   });
 }
 
