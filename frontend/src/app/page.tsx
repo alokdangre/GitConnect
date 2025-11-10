@@ -4,7 +4,14 @@ import { Github } from 'lucide-react';
 
 export default function Home() {
   const handleSignIn = () => {
-    const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+    const clientId =
+      process.env.NEXT_PUBLIC_GITHUB_APP_CLIENT_ID ?? process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+
+    if (!clientId) {
+      console.error('GitHub App client ID is not configured');
+      return;
+    }
+
     const redirectUri = `${window.location.origin}/auth/callback`;
     const scope = 'user:email,read:user,repo';
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;

@@ -7,6 +7,10 @@ import { storeAuthSession } from '@/lib/authStorage';
 
 interface AuthResponse {
   accessToken: string;
+  tokenType: string | null;
+  scope: string | null;
+  tokenExpiresAt: string | null;
+  refreshTokenExpiresAt: string | null;
   appToken: string;
   user: {
     id: string;
@@ -67,6 +71,10 @@ export default function AuthCallback() {
           appToken: data.appToken,
           githubToken: data.accessToken,
           user: data.user,
+          tokenType: data.tokenType,
+          scope: data.scope,
+          tokenExpiresAt: data.tokenExpiresAt,
+          refreshTokenExpiresAt: data.refreshTokenExpiresAt,
         });
 
         setStatus('success');
