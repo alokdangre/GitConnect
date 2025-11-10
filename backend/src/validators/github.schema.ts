@@ -43,11 +43,36 @@ export const githubPullListQuerySchema = z.object({
   direction: z.enum(['asc', 'desc']).optional(),
 });
 
+export const githubUserIssueQuerySchema = z.object({
+  ...paginationBase,
+  filter: z.enum(['assigned', 'created', 'mentioned', 'subscribed', 'all']).optional(),
+  state: z.enum(['open', 'closed', 'all']).optional().default('open'),
+  labels: z.string().optional(),
+  sort: z.enum(['created', 'updated', 'comments']).optional(),
+  direction: z.enum(['asc', 'desc']).optional(),
+  since: z.string().optional(),
+});
+
+export const githubUserPullQuerySchema = z.object({
+  ...paginationBase,
+  role: z.enum(['author', 'review-requested', 'involves']).optional().default('involves'),
+  state: z.enum(['open', 'closed', 'merged', 'all']).optional().default('open'),
+  labels: z.string().optional(),
+  repo: z.string().optional(),
+  base: z.string().optional(),
+  head: z.string().optional(),
+  search: z.string().optional(),
+  sort: z.enum(['created', 'updated', 'comments']).optional(),
+  direction: z.enum(['asc', 'desc']).optional(),
+});
+
 export type GitHubRepoParams = z.infer<typeof githubRepoParamsSchema>;
 export type GitHubMeReposQuery = z.infer<typeof githubMeReposQuerySchema>;
 export type GitHubRepoListQuery = z.infer<typeof githubRepoListQuerySchema>;
 export type GitHubIssueListQuery = z.infer<typeof githubIssueListQuerySchema>;
 export type GitHubPullListQuery = z.infer<typeof githubPullListQuerySchema>;
+export type GitHubUserIssueQuery = z.infer<typeof githubUserIssueQuerySchema>;
+export type GitHubUserPullQuery = z.infer<typeof githubUserPullQuerySchema>;
 
 export function parseZod<T extends z.ZodTypeAny>(schema: T, input: unknown): z.infer<T> {
   const result = schema.safeParse(input);

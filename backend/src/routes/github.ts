@@ -13,6 +13,8 @@ import {
   githubRepoListQuerySchema,
   githubIssueListQuerySchema,
   githubPullListQuerySchema,
+  githubUserIssueQuerySchema,
+  githubUserPullQuerySchema,
 } from '../validators/github.schema.js';
 
 type CacheStatus = 'HIT' | 'MISS';
