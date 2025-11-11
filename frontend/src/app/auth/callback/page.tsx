@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Github, Loader2 } from 'lucide-react';
 import { storeAuthSession } from '@/lib/authStorage';
@@ -32,9 +32,14 @@ export default function AuthCallback() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const hasRunRef = useRef(false);
 
   useEffect(() => {
     const handleAuth = async () => {
+      setStatus('loading');
+      setError(null);
+
+      const searchParams = new URLSearchParams(window.location.search);
       const code = searchParams.get('code');
       const error = searchParams.get('error');
 
@@ -49,6 +54,14 @@ export default function AuthCallback() {
         setError('No authorization code received from GitHub');
         return;
       }
+
+      const sessionStorageKey = 'gitconnect_consumed_github_code';
+      const consumedCode = sessionStorage.getItem(sessionStorageKey);
+      if (consumedCode === code) {
+        // This code was already exchanged (likely due to React StrictMode remount).
+        return;
+      }
+      sessionStorage.setItem(sessionStorageKey, code);
 
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
@@ -93,8 +106,13 @@ export default function AuthCallback() {
       }
     };
 
+    if (hasRunRef.current) {
+      return;
+    }
+
+    hasRunRef.current = true;
     handleAuth();
-  }, [searchParams, router]);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
