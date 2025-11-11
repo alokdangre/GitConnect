@@ -52,12 +52,14 @@ export default function AuthCallback() {
 
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+        const redirectUri = `${window.location.origin}/auth/callback`;
+
         const response = await fetch(`${backendUrl}/auth/github/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, redirectUri }),
         });
 
         if (!response.ok) {

@@ -94,10 +94,18 @@ interface GitHubUserResponse {
 const authRouter = Router();
 
 authRouter.post('/github/callback', async (req, res) => {
-  const { code } = req.body as { code?: string };
+  const { code, redirectUri: requestRedirectUri } = req.body as {
+    code?: string;
+    redirectUri?: string | null;
+  };
   const clientId = process.env.GITHUB_APP_CLIENT_ID ?? process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_APP_CLIENT_SECRET ?? process.env.GITHUB_CLIENT_SECRET;
-  const redirectUri = process.env.GITHUB_REDIRECT_URI;
+  const redirectUri = requestRedirectUri || process.env.GITHUB_REDIRECT_URI;
+
+  console.log('[OAuth] /auth/github/callback invoked', {
+    hasCode: Boolean(code),
+    redirectUri,
+  });
 
   if (!clientId || !clientSecret) {
     res.status(500).json({ error: 'GitHub OAuth credentials are not configured on the server' });
@@ -110,11 +118,16 @@ authRouter.post('/github/callback', async (req, res) => {
   }
 
   try {
+    console.log('[OAuth] exchanging code with GitHub token endpoint');
     const tokenPayload = await exchangeCodeForTokens({
       code,
       clientId,
       clientSecret,
       redirectUri,
+    });
+    console.log('[OAuth] token exchange succeeded', {
+      hasAccessToken: Boolean(tokenPayload.accessToken),
+      hasRefreshToken: Boolean(tokenPayload.refreshToken),
     });
 
     const userResponse = await fetch(GITHUB_USER_API_URL, {
@@ -135,6 +148,7 @@ authRouter.post('/github/callback', async (req, res) => {
     const githubId = githubUser.id.toString();
 
     const userRecord = await upsertGitHubUserRecord(githubId, githubUser, tokenPayload);
+    console.log('[OAuth] user record upserted', { githubId });
 
     const {
       personalAccessToken: _personalAccessToken,
@@ -170,7 +184,9 @@ authRouter.post('/github/callback', async (req, res) => {
       appToken,
       user: sanitizedUser,
     });
+    console.log('[OAuth] response sent to client', { userId: sanitizedUser.id });
   } catch (error) {
+    console.error('[OAuth] error during callback', error);
     if (error instanceof GitHubOAuthError) {
       res.status(400).json({ error: error.message, details: error.details });
       return;
