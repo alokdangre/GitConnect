@@ -4,18 +4,30 @@ import { Github } from 'lucide-react';
 
 export default function Home() {
   const handleSignIn = () => {
-    const clientId =
-      process.env.NEXT_PUBLIC_GITHUB_APP_CLIENT_ID ?? process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const scope = 'user:email,read:user,repo';
 
-    if (!clientId) {
-      console.error('GitHub App client ID is not configured');
+    const appClientId = process.env.NEXT_PUBLIC_GITHUB_APP_CLIENT_ID;
+    if (appClientId) {
+      const appSlug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
+      if (!appSlug) {
+        console.error('GitHub App slug is not configured');
+        return;
+      }
+
+      const githubAppAuthUrl = `https://github.com/apps/${appSlug}/oauth/authorize?client_id=${appClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+      window.location.href = githubAppAuthUrl;
       return;
     }
 
-    const redirectUri = `${window.location.origin}/auth/callback`;
-    const scope = 'user:email,read:user,repo';
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
-    window.location.href = githubAuthUrl;
+    const legacyClientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+    if (!legacyClientId) {
+      console.error('No GitHub OAuth client ID is configured');
+      return;
+    }
+
+    const legacyAuthUrl = `https://github.com/login/oauth/authorize?client_id=${legacyClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+    window.location.href = legacyAuthUrl;
   };
 
   return (
