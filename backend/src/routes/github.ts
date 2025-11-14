@@ -76,6 +76,47 @@ githubRouter.get('/me', async (req, res) => {
   }
 });
 
+githubRouter.get('/me/issues', async (req, res) => {
+  const githubToken = ensureGithubToken(req, res);
+  if (!githubToken) return;
+
+  let query: ReturnType<typeof githubUserIssueQuerySchema.parse>;
+  try {
+    query = parseZod(githubUserIssueQuerySchema, req.query);
+  } catch (error) {
+    if (handleValidationError(res, error)) return;
+    throw error;
+  }
+
+  const filteredQuery = toGitHubQuery(query);
+  const cacheKey = buildCacheKey([
+    'meIssues',
+    req.user?.id ?? '',
+    serializeQuery(filteredQuery),
+  ]);
+
+  if (serveCacheHit(cacheKey, res)) return;
+
+  try {
+    const result = await githubRequest({
+      path: '/issues',
+      token: githubToken,
+      query: filteredQuery,
+    });
+
+    if (!result.ok) {
+      handleGithubError(res, result);
+      return;
+    }
+
+    const meta = buildResponseMeta(result.rateLimit, Number(query.page ?? 1));
+    cacheSuccess(cacheKey, result, meta, DEFAULT_CACHE_TTL_MS);
+    sendSuccess(res, result.statusCode, result.data, meta, 'MISS');
+  } catch (error) {
+    handleUnexpectedError(res, error);
+  }
+});
+
 githubRouter.get('/me/repos', async (req, res) => {
   const githubToken = ensureGithubToken(req, res);
   if (!githubToken) return;
