@@ -24,7 +24,18 @@ export {
 export {
   generateJudgment,
   type LLMJudgmentResponse,
-  type JudgmentDecision,
   VertexConfigError,
   VertexInvocationError,
 } from './vertexJudgment.js';
+export {
+  judgePullRequest,
+  type PullRequestJudgmentResult,
+} from './pullRequestJudgment.js';
+export {
+  judgeIssue,
+  type IssueJudgmentResult,
+} from './issueJudgment.js';
+export {
+  judgeCommit,
+  type CommitJudgmentResult,
+} from './commitJudgment.js';

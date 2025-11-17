@@ -36,6 +36,24 @@ export const judgmentRequestSchema = z.object({
   limits: fetchLimitsSchema,
 });
 
+export const pullRequestJudgmentRequestSchema = repoIdentifierSchema.extend({
+  number: z.number().int().positive(),
+  limits: fetchLimitsSchema,
+});
+
+export const issueJudgmentRequestSchema = repoIdentifierSchema.extend({
+  number: z.number().int().positive(),
+  limits: fetchLimitsSchema,
+});
+
+export const commitJudgmentRequestSchema = repoIdentifierSchema.extend({
+  sha: z.string().min(7, 'Commit SHA must be at least 7 characters'),
+  limits: fetchLimitsSchema,
+});
+
 export type JudgmentRequestInput = z.infer<typeof judgmentRequestSchema>;
 export type JudgmentTargetInput = JudgmentRequestInput['target'];
 export type JudgmentFetchLimitsInput = NonNullable<JudgmentRequestInput['limits']>;
+export type PullRequestJudgmentRequestInput = z.infer<typeof pullRequestJudgmentRequestSchema>;
+export type IssueJudgmentRequestInput = z.infer<typeof issueJudgmentRequestSchema>;
+export type CommitJudgmentRequestInput = z.infer<typeof commitJudgmentRequestSchema>;

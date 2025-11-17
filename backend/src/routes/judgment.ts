@@ -4,12 +4,21 @@ import { parseZod } from '../validators/github.schema.js';
 import {
   judgmentRequestSchema,
   type JudgmentRequestInput,
+  pullRequestJudgmentRequestSchema,
+  issueJudgmentRequestSchema,
+  commitJudgmentRequestSchema,
+  type PullRequestJudgmentRequestInput,
+  type IssueJudgmentRequestInput,
+  type CommitJudgmentRequestInput,
 } from '../validators/judgment.schema.js';
 import {
   fetchPullRequestContext,
   fetchIssueContext,
   fetchCommitContext,
   generateJudgment,
+  judgePullRequest,
+  judgeIssue,
+  judgeCommit,
 } from '../judgment/index.js';
 import type { Response } from 'express';
 
@@ -62,6 +71,162 @@ judgmentRouter.post('/', async (req, res) => {
         context,
         judgment: llmResponse,
       },
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+judgmentRouter.post('/pull-request', async (req, res) => {
+  let input: PullRequestJudgmentRequestInput;
+
+  try {
+    input = parseZod(pullRequestJudgmentRequestSchema, req.body);
+  } catch (error) {
+    if (error instanceof Error && 'issues' in error && Array.isArray((error as any).issues)) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Request body failed validation',
+          details: (error as Error & { issues?: unknown }).issues,
+        },
+      });
+      return;
+    }
+
+    throw error;
+  }
+
+  const githubToken = req.githubToken;
+
+  if (!githubToken) {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'GITHUB_TOKEN_MISSING',
+        message: 'GitHub token not available on request context',
+      },
+    });
+    return;
+  }
+
+  try {
+    const result = await judgePullRequest({
+      token: githubToken,
+      owner: input.owner,
+      repo: input.repo,
+      pullNumber: input.number,
+      limits: input.limits,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+judgmentRouter.post('/issue', async (req, res) => {
+  let input: IssueJudgmentRequestInput;
+
+  try {
+    input = parseZod(issueJudgmentRequestSchema, req.body);
+  } catch (error) {
+    if (error instanceof Error && 'issues' in error && Array.isArray((error as any).issues)) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Request body failed validation',
+          details: (error as Error & { issues?: unknown }).issues,
+        },
+      });
+      return;
+    }
+
+    throw error;
+  }
+
+  const githubToken = req.githubToken;
+
+  if (!githubToken) {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'GITHUB_TOKEN_MISSING',
+        message: 'GitHub token not available on request context',
+      },
+    });
+    return;
+  }
+
+  try {
+    const result = await judgeIssue({
+      token: githubToken,
+      owner: input.owner,
+      repo: input.repo,
+      issueNumber: input.number,
+      limits: input.limits,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+judgmentRouter.post('/commit', async (req, res) => {
+  let input: CommitJudgmentRequestInput;
+
+  try {
+    input = parseZod(commitJudgmentRequestSchema, req.body);
+  } catch (error) {
+    if (error instanceof Error && 'issues' in error && Array.isArray((error as any).issues)) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Request body failed validation',
+          details: (error as Error & { issues?: unknown }).issues,
+        },
+      });
+      return;
+    }
+
+    throw error;
+  }
+
+  const githubToken = req.githubToken;
+
+  if (!githubToken) {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'GITHUB_TOKEN_MISSING',
+        message: 'GitHub token not available on request context',
+      },
+    });
+    return;
+  }
+
+  try {
+    const result = await judgeCommit({
+      token: githubToken,
+      owner: input.owner,
+      repo: input.repo,
+      sha: input.sha,
+      limits: input.limits,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
     });
   } catch (error) {
     handleError(res, error);

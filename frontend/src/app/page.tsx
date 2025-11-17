@@ -15,7 +15,7 @@ export default function Home() {
         return;
       }
 
-      const githubAppAuthUrl = `https://github.com/apps/${appSlug}`;
+      const githubAppAuthUrl = `https://github.com/apps/${appSlug}/installations/new`;
       window.location.href = githubAppAuthUrl;
       return;
     }
