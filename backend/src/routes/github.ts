@@ -117,6 +117,118 @@ githubRouter.get('/me/issues', async (req, res) => {
   }
 });
 
+githubRouter.get('/me/pulls', async (req, res) => {
+  const githubToken = ensureGithubToken(req, res);
+  if (!githubToken) return;
+
+  const login = req.user?.login;
+  if (!login) {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'GITHUB_LOGIN_MISSING',
+        message: 'GitHub login not available for current user',
+      },
+    });
+    return;
+  }
+
+  let query: ReturnType<typeof githubUserPullQuerySchema.parse>;
+  try {
+    query = parseZod(githubUserPullQuerySchema, req.query);
+  } catch (error) {
+    if (handleValidationError(res, error)) return;
+    throw error;
+  }
+
+  const searchParts: string[] = ['is:pr'];
+
+  if (query.state === 'open') {
+    searchParts.push('is:open');
+  } else if (query.state === 'closed') {
+    searchParts.push('is:closed');
+  } else if (query.state === 'merged') {
+    searchParts.push('is:merged');
+  }
+
+  if (query.role === 'author') {
+    searchParts.push(`author:${login}`);
+  } else if (query.role === 'review-requested') {
+    searchParts.push(`review-requested:${login}`);
+  } else {
+    searchParts.push(`involves:${login}`);
+  }
+
+  if (query.repo) {
+    searchParts.push(`repo:${query.repo}`);
+  }
+
+  if (query.labels) {
+    query.labels
+      .split(',')
+      .map((label) => label.trim())
+      .filter(Boolean)
+      .forEach((label) => {
+        searchParts.push(`label:${label}`);
+      });
+  }
+
+  if (query.base) {
+    searchParts.push(`base:${query.base}`);
+  }
+
+  if (query.head) {
+    searchParts.push(`head:${query.head}`);
+  }
+
+  if (query.search) {
+    searchParts.push(query.search);
+  }
+
+  const searchQuery = searchParts.join(' ');
+
+  const githubQuery: Record<string, string | number> = {
+    q: searchQuery,
+    page: query.page ?? 1,
+    per_page: query.per_page ?? 30,
+  };
+
+  if (query.sort) {
+    githubQuery.sort = query.sort;
+  }
+
+  if (query.direction) {
+    githubQuery.order = query.direction;
+  }
+
+  const cacheKey = buildCacheKey([
+    'mePulls',
+    req.user?.id ?? '',
+    serializeQuery(githubQuery),
+  ]);
+
+  if (serveCacheHit(cacheKey, res)) return;
+
+  try {
+    const result = await githubRequest({
+      path: '/search/issues',
+      token: githubToken,
+      query: githubQuery,
+    });
+
+    if (!result.ok) {
+      handleGithubError(res, result);
+      return;
+    }
+
+    const meta = buildResponseMeta(result.rateLimit, Number(query.page ?? 1));
+    cacheSuccess(cacheKey, result, meta, DEFAULT_CACHE_TTL_MS);
+    sendSuccess(res, result.statusCode, result.data, meta, 'MISS');
+  } catch (error) {
+    handleUnexpectedError(res, error);
+  }
+});
+
 githubRouter.get('/me/repos', async (req, res) => {
   const githubToken = ensureGithubToken(req, res);
   if (!githubToken) return;
