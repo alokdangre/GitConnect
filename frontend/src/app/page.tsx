@@ -15,7 +15,7 @@ export default function Home() {
         return;
       }
 
-      const githubAppAuthUrl = `https://github.com/apps/${appSlug}/oauth/authorize?client_id=${appClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+      const githubAppAuthUrl = `https://github.com/apps/${appSlug}`;
       window.location.href = githubAppAuthUrl;
       return;
     }
