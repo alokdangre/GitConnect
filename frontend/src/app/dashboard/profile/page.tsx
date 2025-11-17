@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Shield, Users, Github } from "lucide-react";
 import { useGitHubFetch } from '@/hooks/useGitHubFetch';
-import { getStoredUser } from '@/lib/authStorage';
+import { getStoredUser, getAppToken } from '@/lib/authStorage';
 
 interface GitHubUser {
   login: string;
@@ -28,11 +28,20 @@ interface RateLimitMeta {
   reset?: number | null;
 }
 
+interface Installation {
+  id: string;
+  installationId: number;
+  userId: string | null;
+}
+
 export default function ProfilePage() {
   const { data, loading, error, meta, refetch } = useGitHubFetch<GitHubUser>({
     path: '/github/me',
   });
   const [storedLogin, setStoredLogin] = useState<string | null>(null);
+  const [installations, setInstallations] = useState<Installation[] | null>(null);
+  const [installationsLoading, setInstallationsLoading] = useState(false);
+  const [installationsError, setInstallationsError] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -41,7 +50,48 @@ export default function ProfilePage() {
     }
   }, []);
 
+  useEffect(() => {
+    const fetchInstallations = async () => {
+      const appToken = getAppToken();
+      if (!appToken) {
+        return;
+      }
+
+      setInstallationsLoading(true);
+      setInstallationsError(null);
+
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+        const response = await fetch(`${backendUrl}/auth/installations`, {
+          headers: {
+            Authorization: `Bearer ${appToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch GitHub App installations');
+        }
+
+        const data = await response.json();
+        if (Array.isArray(data.installations)) {
+          setInstallations(data.installations as Installation[]);
+        } else {
+          setInstallations([]);
+        }
+      } catch (err) {
+        setInstallationsError(
+          err instanceof Error ? err.message : 'Failed to load GitHub App installation status',
+        );
+      } finally {
+        setInstallationsLoading(false);
+      }
+    };
+
+    fetchInstallations();
+  }, []);
+
   const rateLimit = (meta?.rateLimit as RateLimitMeta | null) ?? null;
+  const hasInstallation = Array.isArray(installations) && installations.length > 0;
 
   const handleInstallApp = () => {
     const appSlug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
@@ -107,7 +157,17 @@ export default function ProfilePage() {
           <div>
             <h3 className="text-sm font-semibold text-white">GitHub App installation</h3>
             <p className="text-xs text-slate-200/80">
-              Install the GitConnect GitHub App to unlock higher rate limits and live repository updates.
+              {hasInstallation
+                ? 'The GitConnect GitHub App is installed for your account. You can manage repositories from GitHub to control access.'
+                : 'Install the GitConnect GitHub App to unlock higher rate limits and live repository updates.'}
+            </p>
+            <p className="mt-2 text-xs text-slate-300/80">
+              {installationsLoading && 'Checking GitHub App installation status…'}
+              {!installationsLoading && hasInstallation && 'Status: Installed'}
+              {!installationsLoading && !hasInstallation && !installationsError && 'Status: Not installed'}
+              {installationsError && (
+                <span className="text-red-300"> Installation status unavailable: {installationsError}</span>
+              )}
             </p>
           </div>
         </div>
@@ -116,7 +176,7 @@ export default function ProfilePage() {
           className="mt-2 inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-purple-500"
         >
           <Github className="h-4 w-4" />
-          Install GitHub App
+          {hasInstallation ? 'Manage on GitHub' : 'Install GitHub App'}
         </button>
       </section>
 
