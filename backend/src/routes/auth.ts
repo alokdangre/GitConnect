@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import type { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { exchangeCodeForTokens, type GitHubAppTokenPayload, GitHubOAuthError } from '../lib/githubAppAuth.js';
+import { authenticateRequest } from '../middleware/auth.js';
 
 function buildProfileUpdateData(profile: GitHubUserResponse): Prisma.UserUpdateInput {
   return {
@@ -194,6 +195,86 @@ authRouter.post('/github/callback', async (req, res) => {
 
     console.error('GitHub OAuth error:', error);
     res.status(500).json({ error: 'Unexpected error during GitHub authentication' });
+  }
+});
+
+authRouter.post('/installations/link', authenticateRequest, async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    res.status(401).json({ error: 'Unauthenticated' });
+    return;
+  }
+
+  const { installationId, setupAction } = req.body as {
+    installationId?: string | number;
+    setupAction?: string | null;
+  };
+
+  if (!installationId) {
+    res.status(400).json({ error: 'Missing installationId in request body' });
+    return;
+  }
+
+  const numericInstallationId =
+    typeof installationId === 'string' ? Number.parseInt(installationId, 10) : installationId;
+
+  if (!Number.isFinite(numericInstallationId)) {
+    res.status(400).json({ error: 'installationId must be a valid number' });
+    return;
+  }
+
+  try {
+    const record = await prisma.installation.upsert({
+      where: { installationId: numericInstallationId },
+      update: {
+        userId: user.id,
+      } as Prisma.InstallationUpdateInput,
+      create: {
+        installationId: numericInstallationId,
+        userId: user.id,
+      } as Prisma.InstallationCreateInput,
+    });
+
+    console.log('[Installations] linked installation to user', {
+      installationId: record.installationId,
+      userId: record.userId,
+      setupAction,
+    });
+
+    res.json({
+      success: true,
+      installation: {
+        id: record.id,
+        installationId: record.installationId,
+        userId: record.userId,
+      },
+    });
+  } catch (error) {
+    console.error('[Installations] failed to link installation', error);
+    res.status(500).json({ error: 'Failed to link installation to user' });
+  }
+});
+
+authRouter.get('/installations', authenticateRequest, async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    res.status(401).json({ error: 'Unauthenticated' });
+    return;
+  }
+
+  try {
+    const installations = await prisma.installation.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({
+      success: true,
+      installations,
+    });
+  } catch (error) {
+    console.error('[Installations] failed to list installations', error);
+    res.status(500).json({ error: 'Failed to fetch installations' });
   }
 });
 

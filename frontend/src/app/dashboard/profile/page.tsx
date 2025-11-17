@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Shield, Users } from "lucide-react";
+import { Shield, Users, Github } from "lucide-react";
 import { useGitHubFetch } from '@/hooks/useGitHubFetch';
 import { getStoredUser } from '@/lib/authStorage';
 
@@ -42,6 +42,18 @@ export default function ProfilePage() {
   }, []);
 
   const rateLimit = (meta?.rateLimit as RateLimitMeta | null) ?? null;
+
+  const handleInstallApp = () => {
+    const appSlug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
+    if (!appSlug) {
+      console.error('GitHub App slug is not configured');
+      return;
+    }
+
+    const state = encodeURIComponent('/dashboard/profile');
+    const installUrl = `https://github.com/apps/${appSlug}/installations/new?state=${state}`;
+    window.location.href = installUrl;
+  };
 
   return (
     <div className="space-y-6">
@@ -85,6 +97,27 @@ export default function ProfilePage() {
           <StatCard label="Public Repos" value={data?.public_repos ?? '--'} icon={<Shield className="h-4 w-4" />} />
           <StatCard label="Public Gists" value={data?.public_gists ?? '--'} icon={<Shield className="h-4 w-4" />} />
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-purple-500/40 bg-purple-900/30 p-6 backdrop-blur space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="rounded-full bg-purple-500/30 p-2 text-purple-100">
+            <Github className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white">GitHub App installation</h3>
+            <p className="text-xs text-slate-200/80">
+              Install the GitConnect GitHub App to unlock higher rate limits and live repository updates.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleInstallApp}
+          className="mt-2 inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-purple-500"
+        >
+          <Github className="h-4 w-4" />
+          Install GitHub App
+        </button>
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">

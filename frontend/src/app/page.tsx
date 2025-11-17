@@ -9,14 +9,10 @@ export default function Home() {
 
     const appClientId = process.env.NEXT_PUBLIC_GITHUB_APP_CLIENT_ID;
     if (appClientId) {
-      const appSlug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG;
-      if (!appSlug) {
-        console.error('GitHub App slug is not configured');
-        return;
-      }
-
-      const githubAppAuthUrl = `https://github.com/apps/${appSlug}/installations/new`;
-      window.location.href = githubAppAuthUrl;
+      const authUrl = `https://github.com/login/oauth/authorize?client_id=${appClientId}&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&scope=${encodeURIComponent(scope)}`;
+      window.location.href = authUrl;
       return;
     }
 
@@ -26,7 +22,9 @@ export default function Home() {
       return;
     }
 
-    const legacyAuthUrl = `https://github.com/login/oauth/authorize?client_id=${legacyClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+    const legacyAuthUrl = `https://github.com/login/oauth/authorize?client_id=${legacyClientId}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&scope=${encodeURIComponent(scope)}`;
     window.location.href = legacyAuthUrl;
   };
 
