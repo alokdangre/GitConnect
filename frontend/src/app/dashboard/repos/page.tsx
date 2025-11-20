@@ -44,7 +44,7 @@ export default function ReposPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 shadow-lg backdrop-blur">
         <div>
-          <h2 className="text-2xl font-semibold text-white"> Repositories</h2>
+          <h2 className="text-2xl font-semibold text-white">Repositories</h2>
           <p className="text-sm text-slate-200/70">Fetched from GitHub via backend /github/me/repos</p>
         </div>
         <div className="flex items-center gap-3 text-sm text-slate-100/80">
